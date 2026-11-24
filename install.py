@@ -3,7 +3,7 @@ import argparse
 import filecmp
 import shutil
 import sys
-import tempfile
+from uuid import uuid4
 from pathlib import Path
 
 SOURCE = Path(__file__).resolve().parent / ".agents" / "skills" / "film-director"
@@ -25,12 +25,16 @@ def install(client, home):
             return f"{client}: already installed at {target}"
         raise FileExistsError(f"{target} already exists with different contents; preserved it.")
     parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix=".install-film-director-", dir=parent) as tmp:
-        staged = Path(tmp) / SOURCE.name
-        shutil.copytree(SOURCE, staged)
+    staged = parent / (".install-film-director-" + uuid4().hex)
+    staged.mkdir()
+    try:
+        shutil.copytree(SOURCE, staged, dirs_exist_ok=True)
         if not all(filecmp.cmp(SOURCE / p, staged / p, shallow=False) for p in files):
             raise OSError("Copy verification failed.")
         staged.rename(target)
+    finally:
+        if staged.exists():
+            shutil.rmtree(staged)
     return f"{client}: installed at {target}"
 
 
